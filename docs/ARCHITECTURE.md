@@ -16,7 +16,9 @@ com.mohitkumar.solarpulse
 │   └── FailureInjectionController       Demo-only: forces the circuit breaker open/closed directly
 ├── resilience/
 │   ├── FallbackCacheService             In-memory last-known-good reading per site
-│   └── CircuitBreakerStatusService      Reads CircuitBreakerRegistry state for the API/dashboard
+│   ├── CircuitBreakerStatusService      Reads CircuitBreakerRegistry state for the API/dashboard
+│   └── CircuitBreakerEventListener      Subscribes to Resilience4j's own event publisher; records
+│                                         a bounded state-transition history — a real audit trail
 ├── processing/
 │   ├── GenerationEstimatorService       Irradiance+temp → simulated kW (simplified PV model)
 │   └── TelemetryIngestService           Orchestrates fetch → estimate → persist → anomaly-check
@@ -27,9 +29,31 @@ com.mohitkumar.solarpulse
 │   ├── entity/                          SiteEntity, TelemetryReadingEntity, AnomalyFlagEntity
 │   └── repository/                      Spring Data JPA repositories
 └── api/
-    ├── SiteController                   /api/sites, /api/sites/{id}/readings, /api/sites/{id}/anomalies
+    ├── SiteController                   /api/sites, /api/sites/{id}/readings?limit=, /api/sites/{id}/anomalies
     ├── DashboardController              /api/dashboard — aggregated view for the demo UI
+    ├── AnalyticsController              /api/analytics/summary — fleet-wide KPIs
+    ├── StatusController                 /api/status/events — circuit-breaker transition history
+    ├── SystemInfoController             /api/system/info — build/uptime/live resilience config
     └── dto/                             Response DTOs (entities never leak past the service layer)
+```
+
+## Frontend structure (`frontend/`)
+
+React 18 + Vite + Tailwind CSS, built to static assets and served by the same Spring Boot process (see "Why one deployable" below — this extends to the frontend too, not just the backend).
+
+```
+frontend/src/
+├── api/client.js                A thin fetch wrapper for every /api/* call, plus one polling
+│                                  hook (usePolling) reused by every panel instead of each
+│                                  component managing its own interval/cleanup.
+└── components/
+    ├── TopBar, KpiRow             Branding + fleet-wide KPI tiles (from /api/analytics/summary)
+    ├── CircuitBreakerPanel        Live status + the Inject Failure/Reset controls
+    ├── EventTimeline              Renders /api/status/events — the audit-trail panel
+    ├── SiteGrid                   Per-site cards, each with its own Recharts sparkline
+    ├── TrendChart                 Multi-line Recharts comparison across all sites
+    ├── AnomalyFeed                Restyled anomaly list
+    └── SystemInfoFooter           From /api/system/info
 ```
 
 ## Request flow
@@ -71,6 +95,8 @@ The `FailureInjectionController`'s `/api/admin/inject-failure` endpoint doesn't 
 ## Why one Spring Boot service, not a multi-service saga
 
 A genuinely distributed version of this (separate Order/Payment/Inventory-style services talking over SQS/SNS) was the first idea. It was deliberately scaled back to a single, internally-modular service for one reason: a live portfolio demo that a recruiter can hit at any time needs to actually stay up, and every additional independently-deployed service is another thing that can silently go to sleep, drift in config, or need its own IAM permissions. The architecture story (event-driven ingestion, resilience patterns, clear module boundaries) is still real and credible at this scope — it's just honest about being one deployable, not a claim of "microservices" it doesn't need.
+
+The same principle held when the frontend was rebuilt as a real React app: it would have been easy to deploy it as a second service (e.g. a static site on Vercel calling the API cross-origin, the same shape as the `ask-my-portfolio` chatbot's widget). Instead the `Dockerfile`'s frontend stage builds it and copies the output into the same container that runs the backend — one Render service, one thing to keep alive, regardless of how much richer the UI gets.
 
 ## Why Open-Meteo instead of NREL PVWatts or a paid weather API
 

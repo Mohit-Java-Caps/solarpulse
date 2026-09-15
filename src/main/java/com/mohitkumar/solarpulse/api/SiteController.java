@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -41,13 +42,16 @@ public class SiteController {
             .toList();
     }
 
-    @Operation(summary = "Get a single site's recent telemetry history (most recent 30 readings)")
+    @Operation(summary = "Get a single site's recent telemetry history, most recent first (default 30, capped at 500)")
     @GetMapping("/{siteId}/readings")
-    public ResponseEntity<List<ReadingDto>> readings(@PathVariable String siteId) {
+    public ResponseEntity<List<ReadingDto>> readings(@PathVariable String siteId,
+                                                       @RequestParam(defaultValue = "30") int limit) {
         if (!siteRepository.existsById(siteId)) {
             return ResponseEntity.notFound().build();
         }
-        List<ReadingDto> readings = readingRepository.findTop30BySiteIdOrderByObservedAtDesc(siteId).stream()
+        int cappedLimit = Math.min(Math.max(limit, 1), 500);
+        List<ReadingDto> readings = readingRepository.findBySiteIdOrderByObservedAtDesc(siteId).stream()
+            .limit(cappedLimit)
             .map(ReadingDto::from)
             .toList();
         return ResponseEntity.ok(readings);

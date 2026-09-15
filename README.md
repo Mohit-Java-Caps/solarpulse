@@ -2,11 +2,11 @@
 
 A live solar-telemetry pipeline that mirrors the shape of a real production system — event-driven ingestion, transformation, persistence, and API delivery, wrapped in explicit resilience patterns — built end-to-end from scratch on public data.
 
-**Live demo:** _(deployed on Render — link added once live)_
+**Live demo:** https://solarpulse-9xf7.onrender.com
 
 ## Why this exists
 
-Most backend portfolio projects are either a CRUD app with auth, or a folder of pattern-demo code nobody can actually run. This one is a real, live, single Spring Boot service: it polls public solar-irradiance data for five real locations, turns that into a simulated generation estimate, flags statistical anomalies, and — the actual point — wraps its one genuinely unreliable dependency in a Resilience4j circuit breaker you can watch open and recover in real time, not just read about in a diagram.
+Most backend portfolio projects are either a CRUD app with auth, or a folder of pattern-demo code nobody can actually run. This one is a real, live Spring Boot service behind a real React dashboard: it polls public solar-irradiance data for five real locations, turns that into a simulated generation estimate, flags statistical anomalies, and — the actual point — wraps its one genuinely unreliable dependency in a Resilience4j circuit breaker you can watch open and recover in real time, with a live event timeline proving it, not just a diagram claiming it.
 
 ## What's real vs. simulated
 
@@ -39,13 +39,24 @@ GenerationEstimatorService                    FallbackCacheService
               AnomalyDetectionService (rolling z-score vs. baseline)
                          │
                          ▼
-        REST API (/api/dashboard, /api/sites/...) + Swagger UI
+        REST API (/api/dashboard, /api/analytics, /api/status, /api/system...) + Swagger UI
                          │
                          ▼
-              Static dashboard (src/main/resources/static/index.html)
+              React dashboard (frontend/) — KPIs, live charts, event timeline
 ```
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full package structure and the reasoning behind each decision (why one service instead of a saga, why Open-Meteo, why Render+Neon instead of AWS for hosting this particular demo).
+
+### API surface
+
+| Endpoint | What it returns |
+|---|---|
+| `GET /api/dashboard` | Sites + latest reading, circuit-breaker status, recent anomalies — one call for the whole UI's first paint |
+| `GET /api/sites` / `GET /api/sites/{id}/readings?limit=` / `GET /api/sites/{id}/anomalies` | Site catalog, telemetry history (capped at 500), anomaly flags |
+| `GET /api/analytics/summary` | Fleet-wide KPIs: total capacity/output, active/stale site counts, anomalies in the last 24h |
+| `GET /api/status/events` | Circuit-breaker state-transition history, sourced from Resilience4j's own event publisher — a real audit trail, not a UI log |
+| `GET /api/system/info` | App version/build time, JVM uptime, and the live Resilience4j configuration values |
+| `POST /api/admin/inject-failure` / `POST /api/admin/reset` | Demo-only: force the circuit breaker open/closed directly via Resilience4j's registry API |
 
 ### Why anomaly detection stays simple
 
@@ -58,18 +69,22 @@ A rolling z-score against a per-site mean/stddev, nothing more. This project alr
 - **Data:** PostgreSQL (Neon, free tier) in production; H2 in-memory for local dev/tests
 - **Docs:** springdoc-openapi (Swagger UI at `/swagger-ui.html`)
 - **Observability:** Spring Boot Actuator + Micrometer (Prometheus-format metrics at `/actuator/prometheus`)
-- **Frontend:** a single static HTML/JS dashboard, no build step — served directly by the same Spring Boot app
+- **Frontend:** React 18 + Vite + Tailwind CSS, charts via Recharts, icons via lucide-react — built to static assets and served by the same Spring Boot app (not a separate deployment)
 - **Hosting:** Render (web service, Docker) + Neon (serverless Postgres)
 
 ## Running locally
 
-Requires Java 17 and Maven.
+Requires Java 17, Maven, and Node 20+. Backend and frontend run as two separate local processes (the frontend's Vite dev server proxies `/api` to the backend); in production they're one process, one container.
 
 ```bash
+# terminal 1 — backend, in-memory H2, no setup needed
 mvn spring-boot:run
+
+# terminal 2 — frontend dev server on :5173, proxied to :8080
+cd frontend && npm install && npm run dev
 ```
 
-Open `http://localhost:8080` for the dashboard, `http://localhost:8080/swagger-ui.html` for the API, `http://localhost:8080/actuator/health` for the circuit-breaker's own health indicator. Uses an in-memory H2 database by default — no setup needed.
+Open `http://localhost:5173` for the dashboard, `http://localhost:8080/swagger-ui.html` for the API, `http://localhost:8080/actuator/health` for the circuit-breaker's own health indicator.
 
 ### Troubleshooting: `PKIX path building failed` on a corporate network
 
@@ -87,7 +102,7 @@ This isn't a code bug — it's the same class of issue as configuring git to use
 2. Create a free [Neon](https://neon.tech) Postgres project; copy its connection details.
 3. Create a free [Render](https://render.com) web service from this repo — it detects the `Dockerfile` automatically.
 4. On Render, set environment variables: `SPRING_PROFILES_ACTIVE=prod`, `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD` (from Neon).
-5. Deploy. First request after idle may take up to ~60s (both Render's free tier and Neon's compute scale to zero when idle) — this is a real, honest characteristic of the free-tier demo, not a bug.
+5. Deploy. The build now has a Node stage in front of the Maven stage, so it takes longer than a backend-only build. First request after idle may also take up to ~60s (both Render's free tier and Neon's compute scale to zero when idle) — this is a real, honest characteristic of the free-tier demo, not a bug.
 
 ## Project structure
 
@@ -95,14 +110,14 @@ This isn't a code bug — it's the same class of issue as configuring git to use
 src/main/java/com/mohitkumar/solarpulse/
 ├── config/        Site catalog, startup seeder, HTTP client + OpenAPI config
 ├── ingestion/     OpenMeteoClient (the resilience-wrapped external call), scheduler, failure-injection endpoint
-├── resilience/    Fallback cache, circuit-breaker status service
+├── resilience/    Fallback cache, circuit-breaker status/event-history services
 ├── processing/    Generation estimator, ingest orchestration
 ├── analytics/     Rolling-baseline anomaly detection
 ├── persistence/   JPA entities + repositories
-└── api/           REST controllers + DTOs
-src/main/resources/static/index.html   The live dashboard (no build step)
-src/test/java/...                       Resilience4j circuit-breaker/retry tests (MockRestServiceServer)
-docs/ARCHITECTURE.md                    Full flow diagram + decision rationale
+└── api/           REST controllers + DTOs (sites, dashboard, analytics, status, system info)
+frontend/                                React + Vite + Tailwind dashboard (see its own component breakdown in docs/ARCHITECTURE.md)
+src/test/java/...                        Resilience4j circuit-breaker/retry tests (MockRestServiceServer)
+docs/ARCHITECTURE.md                     Full flow diagram + decision rationale
 ```
 
 ## Known limitations (v2, not built)
