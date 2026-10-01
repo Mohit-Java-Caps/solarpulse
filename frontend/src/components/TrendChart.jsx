@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { TrendingUp } from "lucide-react";
 import { api } from "../api/client.js";
 
-const COLORS = ["#f5a623", "#38bdf8", "#34d399", "#a78bfa", "#fb7185"];
+const COLORS = [
+  "#f5a623", "#38bdf8", "#34d399", "#a78bfa", "#fb7185",
+  "#facc15", "#4ade80", "#f472b6", "#60a5fa", "#fb923c",
+];
 
 // Fetches recent history for every site and merges it into one
 // index-aligned dataset for a multi-line comparison chart. Index-based
@@ -40,38 +42,32 @@ export default function TrendChart({ sites }) {
   });
 
   return (
-    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-      <div className="mb-3 flex items-center gap-2">
-        <TrendingUp className="h-4 w-4 text-[var(--color-primary)]" aria-hidden="true" />
-        <h2 className="text-sm font-semibold text-[var(--color-text)]">Fleet output comparison</h2>
-      </div>
-      <div className="h-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData}>
-            <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="label" tick={{ fill: "var(--color-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: "var(--color-muted)", fontSize: 10 }} axisLine={false} tickLine={false} unit=" kW" />
-            <Tooltip
-              contentStyle={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: 8 }}
-              labelStyle={{ color: "var(--color-muted)" }}
+    <div className="h-64">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={chartData}>
+          <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
+          <XAxis dataKey="label" tick={{ fill: "var(--color-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: "var(--color-muted)", fontSize: 10 }} axisLine={false} tickLine={false} unit=" kW" />
+          <Tooltip
+            contentStyle={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: 8 }}
+            labelStyle={{ color: "var(--color-muted)" }}
+          />
+          <Legend wrapperStyle={{ fontSize: 10 }} />
+          {(sites ?? []).map((site, i) => (
+            <Line
+              key={site.id}
+              type="monotone"
+              dataKey={site.id}
+              name={site.name}
+              stroke={COLORS[i % COLORS.length]}
+              strokeWidth={2}
+              dot={false}
+              isAnimationActive={false}
+              connectNulls
             />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
-            {(sites ?? []).map((site, i) => (
-              <Line
-                key={site.id}
-                type="monotone"
-                dataKey={site.id}
-                name={site.name}
-                stroke={COLORS[i % COLORS.length]}
-                strokeWidth={2}
-                dot={false}
-                isAnimationActive={false}
-                connectNulls
-              />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }

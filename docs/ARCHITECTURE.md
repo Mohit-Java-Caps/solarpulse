@@ -50,8 +50,12 @@ frontend/src/
     ├── TopBar, KpiRow             Branding + fleet-wide KPI tiles (from /api/analytics/summary)
     ├── CircuitBreakerPanel        Live status + the Inject Failure/Reset controls
     ├── EventTimeline              Renders /api/status/events — the audit-trail panel
-    ├── SiteGrid                   Per-site cards, each with its own Recharts sparkline
+    ├── SiteGrid                   Per-site cards (click one to drill into SiteDetailView)
+    ├── FleetChartPanel            Header + the "custom filter" dropdown; switches between
+    │                               TrendChart (fleet) and SiteDetailView (one site)
     ├── TrendChart                 Multi-line Recharts comparison across all sites
+    ├── SiteDetailView             One site's bigger chart, stats, and its own anomaly log —
+    │                               same endpoints as the fleet view, just scoped to one site
     ├── AnomalyFeed                Restyled anomaly list
     └── SystemInfoFooter           From /api/system/info
 ```
@@ -117,6 +121,6 @@ The first version of `OpenMeteoClient`'s `HttpClientConfig` worked fine in produ
 ## Known limitations (stated deliberately, not hidden)
 
 - **Anomaly detection is rule-based statistics (rolling z-score), not machine learning.** Deliberate — see README.
-- **The site catalog is a fixed list of five**, not admin-configurable. A v2 item, not a missing feature at this scope.
+- **The site catalog is a fixed list of ten**, not admin-configurable. A v2 item, not a missing feature at this scope — ten was a deliberate ceiling, not an arbitrary stop: each added site multiplies frontend polling (its own sparkline fetch plus the fleet chart's fetch), and Open-Meteo's free tier, while generous, isn't unlimited.
 - **No conversation/session state or auth on the demo-only admin endpoints.** This is a portfolio demo, not a production admin surface — documented, not hidden.
 - **Generation figures are simulated**, derived from real irradiance/temperature via a simplified PV model, not measured panel output. Labeled as such everywhere it's shown.

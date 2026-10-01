@@ -12,6 +12,7 @@ export const api = {
   events: () => getJson("/api/status/events"),
   systemInfo: () => getJson("/api/system/info"),
   readings: (siteId, limit = 30) => getJson(`/api/sites/${siteId}/readings?limit=${limit}`),
+  siteAnomalies: (siteId) => getJson(`/api/sites/${siteId}/anomalies`),
   injectFailure: () => fetch("/api/admin/inject-failure", { method: "POST" }).then((r) => r.json()),
   reset: () => fetch("/api/admin/reset", { method: "POST" }).then((r) => r.json()),
 };

@@ -2,14 +2,17 @@ import { AreaChart, Area, ResponsiveContainer, YAxis } from "recharts";
 import { MapPin } from "lucide-react";
 import { api, usePolling } from "../api/client.js";
 
-function SiteCard({ site }) {
+function SiteCard({ site, onSelect }) {
   const { data: readings } = usePolling(() => api.readings(site.id, 20), 15000, [site.id]);
   const chartData = (readings ?? []).slice().reverse().map((r, i) => ({ i, kw: r.estimatedPowerKw }));
   const reading = site.latestReading;
   const stale = reading?.stale;
 
   return (
-    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition hover:border-[var(--color-primary)]/40">
+    <button
+      onClick={() => onSelect(site.id)}
+      className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-left transition hover:border-[var(--color-primary)]/60 hover:shadow-lg hover:shadow-black/20"
+    >
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-muted)]">
           <MapPin className="h-3.5 w-3.5" aria-hidden="true" /> {site.name}
@@ -51,17 +54,20 @@ function SiteCard({ site }) {
         <span>Irradiance: {reading ? `${reading.irradianceWm2.toFixed(0)} W/m²` : "—"}</span>
         <span>Capacity: {site.capacityKw} kW</span>
       </div>
-    </div>
+    </button>
   );
 }
 
-export default function SiteGrid({ sites }) {
+export default function SiteGrid({ sites, onSelectSite }) {
   return (
     <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-      <h2 className="mb-3 text-sm font-semibold text-[var(--color-text)]">Monitored sites</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-[var(--color-text)]">Monitored sites</h2>
+        <span className="text-[11px] text-[var(--color-muted)]">Click a site for details</span>
+      </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {(sites ?? []).map((site) => (
-          <SiteCard key={site.id} site={site} />
+          <SiteCard key={site.id} site={site} onSelect={onSelectSite} />
         ))}
       </div>
     </div>

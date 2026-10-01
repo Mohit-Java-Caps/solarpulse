@@ -6,7 +6,7 @@ A live solar-telemetry pipeline that mirrors the shape of a real production syst
 
 ## Why this exists
 
-Most backend portfolio projects are either a CRUD app with auth, or a folder of pattern-demo code nobody can actually run. This one is a real, live Spring Boot service behind a real React dashboard: it polls public solar-irradiance data for five real locations, turns that into a simulated generation estimate, flags statistical anomalies, and — the actual point — wraps its one genuinely unreliable dependency in a Resilience4j circuit breaker you can watch open and recover in real time, with a live event timeline proving it, not just a diagram claiming it.
+Most backend portfolio projects are either a CRUD app with auth, or a folder of pattern-demo code nobody can actually run. This one is a real, live Spring Boot service behind a real React dashboard: it polls public solar-irradiance data for ten real locations worldwide, turns that into a simulated generation estimate, flags statistical anomalies, and — the actual point — wraps its one genuinely unreliable dependency in a Resilience4j circuit breaker you can watch open and recover in real time, with a live event timeline proving it, not just a diagram claiming it. A per-site filter lets you drill from the fleet-wide view into any single site's own history and anomaly log.
 
 ## What's real vs. simulated
 
@@ -125,7 +125,7 @@ docs/ARCHITECTURE.md                     Full flow diagram + decision rationale
 - Multi-source failover (e.g. NREL PVWatts as a second source) — see `docs/ARCHITECTURE.md`.
 - WebSocket/SSE push instead of dashboard polling.
 - Admin auth on the failure-injection endpoints (currently open — this is a demo, not a production admin surface).
-- Configurable site catalog (currently five hardcoded locations).
+- Configurable site catalog (currently ten hardcoded locations — easy to grow further, but kept bounded to stay within a comfortable margin of Open-Meteo's free-tier rate limit and the frontend's per-site polling load).
 - Grafana dashboard on top of the Prometheus-format metrics already exported.
 
 ## License
