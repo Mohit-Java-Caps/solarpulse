@@ -45,7 +45,7 @@ GenerationEstimatorService                    FallbackCacheService
               React dashboard (frontend/) — KPIs, live charts, event timeline
 ```
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full package structure and the reasoning behind each decision (why one service instead of a saga, why Open-Meteo, why Render+Neon instead of AWS for hosting this particular demo).
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full package structure and the reasoning behind each decision (why one service instead of a saga, why Open-Meteo, why Render+Neon instead of AWS for hosting this particular demo), and [`docs/INTERVIEW_PREP.md`](docs/INTERVIEW_PREP.md) for how to talk about this project out loud.
 
 ### API surface
 
